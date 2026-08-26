@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 1 — Generator Pola Chevron</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #14161a; color: #eee; margin: 0; padding: 16px; text-align: center; }
+  h1 { font-size: 1.2rem; margin: 8px 0 16px; font-weight: 600; }
+  menu { margin: 0 0 12px; padding: 0; }
+  button, input { font-size: 1rem; padding: 8px 14px; border-radius: 6px; border: 1px solid #444; background: #23262c; color: #eee; cursor: pointer; }
+  button:hover { background: #33373f; }
+  input { width: 11ch; cursor: text; }
+  #info { font-size: .85rem; color: #9aa3ad; margin: 0 0 12px; }
+  canvas { width: min(92vmin, 860px); height: auto; display: block; margin: 0 auto 16px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Project 1 — Generator Pola Chevron</h1>
+<menu>
+  <button id="btnBaru">Generate Pola</button>
+  <input id="inputSeed" type="number" placeholder="seed">
+  <button id="btnTerapkan">Terapkan Seed</button>
+  <button id="btnSimpan">Simpan JPG</button>
+</menu>
+<p id="info"></p>
+<canvas id="kanvas" width="4000" height="4000"></canvas>
+
+<script>
+const S = 4000;
+const DPI = 300;
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rentang = (R, min, max) => min + R() * (max - min);
+const rint = (R, min, max) => Math.floor(rentang(R, min, max + 1));
+const pilih = (R, arr) => arr[Math.floor(R() * arr.length)];
+
+function parameterAcak(R) {
+  const mode = pilih(R, ['pita', 'garis']);
+  return {
+    mode,
+    gaya: pilih(R, ['berani', 'pastel', 'monokrom']),
+    jumlahPita: mode === 'pita' ? rint(R, 7, 14) : rint(R, 12, 22),
+    amplitudo: rentang(R, 120, 480),
+    periode: rentang(R, 500, 1500),
+    fase: rentang(R, 0, 2000),
+    bulat: R() < 0.5,
+    gradien: R() < 0.5,
+    tebalRatio: mode === 'pita' ? 1 : rentang(R, 0.25, 0.6),
+  };
+}
+
+function buatPalet(R, gaya, n) {
+  const h = rint(R, 0, 360);
+  let s, l, hueStep;
+  if (gaya === 'pastel') { s = 38; l = 76; hueStep = pilih(R, [25, 45]); }
+  else if (gaya === 'monokrom') { s = 12; l = 46; hueStep = 0; }
+  else { s = 72; l = 52; hueStep = pilih(R, [15, 30, 180]); }
+
+  const warna = [];
+  for (let i = 0; i < n; i++) {
+    const hh = (h + i * hueStep) % 360;
+    const ll = gaya === 'monokrom' ? 26 + (i % 6) * 11 : Math.min(92, Math.max(20, l + ((i % 2) ? 14 : -9)));
+    warna.push(`hsl(${hh} ${s}% ${ll}%)`);
+  }
+  const latar = gaya === 'pastel' ? `hsl(${h} 30% 94%)`
+    : gaya === 'monokrom' ? 'hsl(0 0% 96%)'
+      : `hsl(${h} 35% 13%)`;
+  return { warna, latar };
+}
+
+function titikZigzag(p, y) {
+  const M = p.margin, step = p.periode / 2;
+  const k0 = Math.floor((-M + p.fase) / step) - 1;
+  const k1 = Math.ceil((S + M + p.fase) / step) + 1;
+  const pts = [];
+  for (let k = k0; k <= k1; k++) {
+    pts.push({ x: k * step - p.fase, y: k % 2 === 0 ? y - p.amplitudo : y });
+  }
+  return pts;
+}
+
+function telusuri(ctx, pts, p) {
+  ctx.moveTo(pts[0].x, pts[0].y);
+  if (!p.bulat) {
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  } else {
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2;
+      const my = (pts[i].y + pts[i + 1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    }
+    const akhir = pts[pts.length - 1];
+    ctx.lineTo(akhir.x, akhir.y);
+  }
+}
+
+function buatGradien(ctx, warna) {
+  const g = ctx.createLinearGradient(0, 0, S, 0);
+  warna.forEach((w, i) => g.addColorStop(i / (warna.length - 1), w));
+  return g;
+}
+
+function render(seedInt) {
+  const R = mulberry32(seedInt);
+  const p = parameterAcak(R);
+  p.margin = p.periode + p.amplitudo + 200;
+  const pal = buatPalet(R, p.gaya, p.jumlahPita);
+
+  const ctx = kanvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = pal.latar;
+  ctx.fillRect(0, 0, S, S);
+
+  const span = S + 2 * p.margin;
+  const jarak = span / p.jumlahPita;
+  const tebal = jarak * p.tebalRatio;
+  const warnaPita = p.gradien && p.jumlahPita > 1 ? buatGradien(ctx, pal.warna) : null;
+
+  for (let i = 0; i <= p.jumlahPita; i++) {
+    const y = -p.margin + i * jarak;
+    const warna = warnaPita || pal.warna[i % pal.warna.length];
+    if (p.mode === 'pita') {
+      const atas = titikZigzag(p, y);
+      const bawah = titikZigzag(p, y + tebal);
+      ctx.beginPath();
+      telusuri(ctx, atas, p);
+      for (let j = bawah.length - 1; j >= 0; j--) ctx.lineTo(bawah[j].x, bawah[j].y);
+      ctx.closePath();
+      ctx.fillStyle = warna;
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      telusuri(ctx, titikZigzag(p, y), p);
+      ctx.lineWidth = tebal;
+      ctx.lineJoin = p.bulat ? 'round' : 'miter';
+      ctx.lineCap = 'butt';
+      ctx.strokeStyle = warna;
+      ctx.stroke();
+    }
+  }
+  info.textContent = `Seed ${seedInt} · ${p.mode}, ${p.gaya}, ${p.bulat ? 'lekuk' : 'tajam'}, ${p.gradien ? 'gradien' : 'solid'} — file: chevron-${seedInt}-<timestamp>.jpg`;
+}
+
+function setJfifDensity(bytes, dpi) {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new Error('bukan JPEG');
+  let i = 2;
+  while (i + 3 < bytes.length && bytes[i] === 0xff) {
+    const marker = bytes[i + 1];
+    if (marker === 0xe0) {
+      const out = bytes.slice();
+      out[i + 11] = 1;
+      out[i + 12] = (dpi >> 8) & 0xff;
+      out[i + 13] = dpi & 0xff;
+      out[i + 14] = (dpi >> 8) & 0xff;
+      out[i + 15] = dpi & 0xff;
+      return out;
+    }
+    if (marker === 0xda) break;
+    i += 2 + ((bytes[i + 2] << 8) | bytes[i + 3]);
+  }
+  const app0 = Uint8Array.of(
+    0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00,
+    0x01, 0x02, 0x01,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    0x00, 0x00
+  );
+  const out = new Uint8Array(app0.length + bytes.length - 2);
+  out.set(bytes.subarray(0, 2), 0);
+  out.set(app0, 2);
+  out.set(bytes.subarray(2), 2 + app0.length);
+  return out;
+}
+
+let dirHandle = null;
+
+async function simpanJpg() {
+  const nama = `chevron-${seed}-${Date.now()}.jpg`;
+  const blob = await new Promise(r => kanvas.toBlob(r, 'image/jpeg', 0.92));
+  const data = setJfifDensity(new Uint8Array(await blob.arrayBuffer()), DPI);
+  const jpg = new Blob([data], { type: 'image/jpeg' });
+
+  if (window.showDirectoryPicker) {
+    if (!dirHandle) {
+      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    }
+    const fh = await dirHandle.getFileHandle(nama, { create: true });
+    const w = await fh.createWritable();
+    await w.write(jpg);
+    await w.close();
+    info.textContent += ` · tersimpan: ${nama}`;
+  } else {
+    const url = URL.createObjectURL(jpg);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nama;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    info.textContent += ` · terunduh: ${nama} (pindahkan ke hasil/)`;
+  }
+}
+
+const kanvas = document.getElementById('kanvas');
+const info = document.getElementById('info');
+const inputSeed = document.getElementById('inputSeed');
+let seed = 0;
+
+document.getElementById('btnBaru').onclick = () => {
+  seed = (Math.random() * 2 ** 31) | 0;
+  inputSeed.value = seed;
+  render(seed);
+};
+document.getElementById('btnTerapkan').onclick = () => {
+  const v = parseInt(inputSeed.value, 10);
+  if (Number.isFinite(v)) { seed = v | 0; render(seed); }
+};
+document.getElementById('btnSimpan').onclick = simpanJpg;
+
+seed = (Math.random() * 2 ** 31) | 0;
+inputSeed.value = seed;
+render(seed);
+</script>
+</body>
+</html>

@@ -8,12 +8,16 @@ Halaman web generator pola unik: pola acak dengan kombinasi warna, bentuk, dan p
 - Nama file unik; semua hasil disimpan di folder `hasil/`
 - Gotcha: `canvas.toBlob()`/`toDataURL()` tidak menyimpan metadata DPI. Jika 300 DPI benar-benar divalidasi dari file, perlu penyisipan metadata JFIF saat ekspor/post-process — jangan diam-diam mengabaikan spesifikasi ini.
 
+## Struktur project
+- Setiap pola/project hidup di foldernya sendiri: `project-1/`, `project-2/`, dst. Project baru = folder bernomor berikutnya, jangan mencampur beberapa pola dalam satu folder.
+- Tiap project = satu halaman statis mandiri (`index.html`); output tetap masuk `hasil/`.
+
 ## Teknologi & menjalankan
 - Static HTML + JS, render pola via Canvas API di browser. **Tanpa build tool / npm / framework** — jangan membuat `package.json` atau config build yang tidak diminta.
 - Preview: buka file HTML langsung di browser, atau lewat localhost karena repo ini berada di dalam web root USBWebServer (`D:\NUSABIT\usbwebserver\root\`).
 
 ## Status repo
-- Belum ada kode, test, lint, maupun CI. Jangan mengarang perintah build/test; verifikasi dengan membuka halaman di browser dan memeriksa output JPG di `hasil/`.
+- Tidak ada test, lint, maupun CI. Jangan mengarang perintah build/test; verifikasi dengan membuka halaman di browser dan memeriksa output JPG di `hasil/`.
 - `.gitattributes` hanya normalisasi LF (`* text=auto`).
 
 ## Panduan perilaku
