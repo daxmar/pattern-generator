@@ -25,3 +25,6 @@ Baca `petunjuk_ai.md` (Bahasa Indonesia) sebelum coding. Poin inti:
 - Perubahan presisi: ubah hanya yang diminta pengguna; jangan refactor/perbaiki kode di sekitarnya; ikuti gaya kode yang sudah ada.
 - Kesederhanaan dulu: tanpa fitur spekulatif, abstraksi satu-pemakaian, atau error handling untuk skenario mustahil.
 - Nyatakan asumsi secara eksplisit sebelum implementasi; jika ada beberapa interpretasi, sampaikan semuanya — jangan memilih diam-diam.
+
+# Response
+Berikan respon yang bahagia, mudah dipahami, dan mungkin bisa ditambah emoticon
