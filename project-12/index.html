@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 12 — Generator Pola Pinstripe Wavy</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #14161a; color: #eee; margin: 0; padding: 16px; text-align: center; }
+  h1 { font-size: 1.2rem; margin: 8px 0 16px; font-weight: 600; }
+  menu { margin: 0 0 12px; padding: 0; }
+  button, input { font-size: 1rem; padding: 8px 14px; border-radius: 6px; border: 1px solid #444; background: #23262c; color: #eee; cursor: pointer; }
+  button:hover { background: #33373f; }
+  input { width: 11ch; cursor: text; }
+  #info { font-size: .85rem; color: #9aa3ad; margin: 0 0 12px; }
+  canvas { width: min(92vmin, 860px); height: auto; display: block; margin: 0 auto 16px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Project 12 — Generator Pola Pinstripe Wavy</h1>
+<menu>
+  <button id="btnBaru">Generate Pola</button>
+  <input id="inputSeed" type="number" placeholder="seed">
+  <button id="btnTerapkan">Terapkan Seed</button>
+  <button id="btnSimpan">Simpan JPG</button>
+</menu>
+<p id="info"></p>
+<canvas id="kanvas" width="4000" height="4000"></canvas>
+
+<script>
+const S = 4000;
+const DPI = 300;
+const TAU = Math.PI * 2;
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rentang = (R, min, max) => min + R() * (max - min);
+const rint = (R, min, max) => Math.floor(rentang(R, min, max + 1));
+const pilih = (R, arr) => arr[Math.floor(R() * arr.length)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+const PALET = [
+  { nama: 'romantis', latar: '#1a1620', warna: ['#e0aaff','#9d4edd','#ff70a6','#7b2cbf','#ffd166','#c77dff','#ff9770'] },
+  { nama: 'rendah hati', latar: '#efe9e2', warna: ['#2f4858','#33658a','#86bbd8','#f6ae2d','#f26419','#5b7553','#8f6d47'] },
+  { nama: 'malam', latar: '#0b1020', warna: ['#2de2e6','#4d96ff','#ffd670','#ff5d8f','#3bf0a5','#5f27cd','#a7f3d0'] },
+  { nama: 'kopi',  latar: '#1c120c', warna: ['#c8996a','#8a5a34','#e3b386','#6b4a2f','#d9a05b','#a17647','#f0d0a8'] },
+  { nama: 'segar', latar: '#f4f7ee', warna: ['#3a7d5c','#7fb069','#e9c46a','#2a9d8f','#e76f51','#386641','#a7c957'] },
+];
+
+function render(seedInt) {
+  const R = mulberry32(seedInt);
+  const palet = pilih(R, PALET);
+  const mode = pilih(R, ['pita', 'garis', 'gradien']);
+  const jumlah = rint(R, 20, 44);
+  const amp = rentang(R, 40, 260);
+  const fase = rentang(R, 0, 2000);
+  const gradien = R() < 0.5;
+
+  const ctx = kanvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = palet.latar;
+  ctx.fillRect(0, 0, S, S);
+
+  const jarak = S / jumlah;
+  let grad = null;
+  if (mode === 'gradien' || gradien) {
+    grad = ctx.createLinearGradient(0, 0, S, 0);
+    palet.warna.forEach((w, i) => grad.addColorStop(i / (palet.warna.length - 1), w));
+  }
+
+  for (let i = 0; i <= jumlah; i++) {
+    const x = i * jarak;
+    const warna = grad || palet.warna[i % palet.warna.length];
+    const yAtas = (yy) => yy + Math.sin((yy + fase) * 0.02) * amp;
+    const yBawah = (yy) => yy + Math.sin((yy + fase + Math.PI) * 0.02) * amp;
+
+    if (mode === 'garis') {
+      ctx.beginPath();
+      ctx.strokeStyle = warna;
+      ctx.lineWidth = Math.max(jarak * 0.12, 4);
+      ctx.lineJoin = 'round';
+      for (let y = -100; y <= S + 100; y += 12) {
+        const px = x + Math.sin((y + fase) * 0.02) * amp;
+        if (y === -100) ctx.moveTo(px, y);
+        else ctx.lineTo(px, y);
+      }
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.fillStyle = warna;
+      for (let y = -100; y <= S + 100; y += 12) {
+        const px = x + Math.sin((y + fase) * 0.02) * amp;
+        if (y === -100) ctx.moveTo(px, y);
+        else ctx.lineTo(px, y);
+      }
+      ctx.lineTo(x + jarak * 0.7 + Math.sin((S + 100 + fase) * 0.02) * amp, S + 100);
+      for (let y = S + 100; y >= -100; y -= 12) {
+        const px = x + jarak * 0.7 + Math.sin((y + fase) * 0.02) * amp;
+        ctx.lineTo(px, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  const labelMode = { pita: 'pita', garis: 'garis', gradien: 'gradien' };
+  info.textContent = `Seed ${seedInt} · ${palet.nama}, ${labelMode[mode]}, gelombang ${Math.round(amp)}px — file: pinstripe-${seedInt}-<timestamp>.jpg`;
+}
+
+function setJfifDensity(bytes, dpi) {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new Error('bukan JPEG');
+  let i = 2;
+  while (i + 3 < bytes.length && bytes[i] === 0xff) {
+    const marker = bytes[i + 1];
+    if (marker === 0xe0) {
+      const out = bytes.slice();
+      out[i + 11] = 1;
+      out[i + 12] = (dpi >> 8) & 0xff;
+      out[i + 13] = dpi & 0xff;
+      out[i + 14] = (dpi >> 8) & 0xff;
+      out[i + 15] = dpi & 0xff;
+      return out;
+    }
+    if (marker === 0xda) break;
+    i += 2 + ((bytes[i + 2] << 8) | bytes[i + 3]);
+  }
+  const app0 = Uint8Array.of(
+    0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00,
+    0x01, 0x02, 0x01,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    0x00, 0x00
+  );
+  const out = new Uint8Array(app0.length + bytes.length - 2);
+  out.set(bytes.subarray(0, 2), 0);
+  out.set(app0, 2);
+  out.set(bytes.subarray(2), 2 + app0.length);
+  return out;
+}
+
+let dirHandle = null;
+
+async function simpanJpg() {
+  const nama = `pinstripe-${seed}-${Date.now()}.jpg`;
+  const blob = await new Promise(r => kanvas.toBlob(r, 'image/jpeg', 0.92));
+  const data = setJfifDensity(new Uint8Array(await blob.arrayBuffer()), DPI);
+  const jpg = new Blob([data], { type: 'image/jpeg' });
+
+  if (window.showDirectoryPicker) {
+    if (!dirHandle) dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const fh = await dirHandle.getFileHandle(nama, { create: true });
+    const w = await fh.createWritable();
+    await w.write(jpg);
+    await w.close();
+    info.textContent += ` · tersimpan: ${nama}`;
+  } else {
+    const url = URL.createObjectURL(jpg);
+    const a = document.createElement('a');
+    a.href = url; a.download = nama; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    info.textContent += ` · terunduh: ${nama} (pindahkan ke hasil/)`;
+  }
+}
+
+const kanvas = document.getElementById('kanvas');
+const info = document.getElementById('info');
+const inputSeed = document.getElementById('inputSeed');
+let seed = 0;
+
+document.getElementById('btnBaru').onclick = () => {
+  seed = (Math.random() * 2 ** 31) | 0;
+  inputSeed.value = seed;
+  render(seed);
+};
+document.getElementById('btnTerapkan').onclick = () => {
+  const v = parseInt(inputSeed.value, 10);
+  if (Number.isFinite(v)) { seed = v | 0; render(seed); }
+};
+document.getElementById('btnSimpan').onclick = simpanJpg;
+
+seed = (Math.random() * 2 ** 31) | 0;
+inputSeed.value = seed;
+render(seed);
+</script>
+</body>
+</html>

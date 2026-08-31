@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 13 — Generator Pola Kaleidoscope</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #14161a; color: #eee; margin: 0; padding: 16px; text-align: center; }
+  h1 { font-size: 1.2rem; margin: 8px 0 16px; font-weight: 600; }
+  menu { margin: 0 0 12px; padding: 0; }
+  button, input { font-size: 1rem; padding: 8px 14px; border-radius: 6px; border: 1px solid #444; background: #23262c; color: #eee; cursor: pointer; }
+  button:hover { background: #33373f; }
+  input { width: 11ch; cursor: text; }
+  #info { font-size: .85rem; color: #9aa3ad; margin: 0 0 12px; }
+  canvas { width: min(92vmin, 860px); height: auto; display: block; margin: 0 auto 16px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Project 13 — Generator Pola Kaleidoscope</h1>
+<menu>
+  <button id="btnBaru">Generate Pola</button>
+  <input id="inputSeed" type="number" placeholder="seed">
+  <button id="btnTerapkan">Terapkan Seed</button>
+  <button id="btnSimpan">Simpan JPG</button>
+</menu>
+<p id="info"></p>
+<canvas id="kanvas" width="4000" height="4000"></canvas>
+
+<script>
+const S = 4000;
+const DPI = 300;
+const TAU = Math.PI * 2;
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rentang = (R, min, max) => min + R() * (max - min);
+const rint = (R, min, max) => Math.floor(rentang(R, min, max + 1));
+const pilih = (R, arr) => arr[Math.floor(R() * arr.length)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+const PALET = [
+  { nama: 'sakura',  latar: '#1c1218', warna: ['#ffb7c5','#ff6b9d','#c9184a','#590d22','#ff4d6d','#ffccd5','#7b2d8b'] },
+  { nama: 'kuil',    latar: '#141008', warna: ['#ffd700','#ff8c00','#8b4513','#cd853f','#b8860b','#daa520','#d2691e'] },
+  { nama: 'es',      latar: '#0a1520', warna: ['#e0f7fa','#80deea','#00acc1','#006064','#84ffff','#4dd0e1','#00838f'] },
+  { nama: 'bunga',   latar: '#f5f0e8', warna: ['#e63946','#f4a261','#2a9d8f','#9d4edd','#ff70a6','#264653','#e9c46a'] },
+  { nama: 'neon',    latar: '#0d0d14', warna: ['#ff0054','#00ff88','#ffee00','#00aaff','#ff6600','#cc00ff','#00ffcc'] },
+];
+
+function render(seedInt) {
+  const R = mulberry32(seedInt);
+  const palet = pilih(R, PALET);
+  const simetri = pilih(R, [6, 8, 12]);
+  const jmlLapis = rint(R, 3, 8);
+  const latarPola = R() < 0.3;
+
+  const ctx = kanvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = palet.latar;
+  ctx.fillRect(0, 0, S, S);
+
+  const cx = S / 2, cy = S / 2;
+  const rMax = S * 0.48;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  for (let lap = 0; lap < jmlLapis; lap++) {
+    const ri = (lap + 1) * rMax / jmlLapis;
+    const ro = ri + rMax / jmlLapis * 0.9;
+    const n = rint(R, 1, 4);
+    for (let j = 0; j < n; j++) {
+      const rad = rentang(R, ri, ro);
+      const a = rentang(R, 0, TAU / simetri);
+      const warna = pilih(R, palet.warna);
+      const bentuk = pilih(R, ['lingkaran', 'segitiga', 'garis']);
+
+      if (bentuk === 'lingkaran') {
+        const uk = rentang(R, 20, rMax * 0.2);
+        for (let s = 0; s < simetri; s++) {
+          ctx.save();
+          ctx.rotate((s * TAU) / simetri + a);
+          ctx.fillStyle = warna;
+          ctx.globalAlpha = rentang(R, 0.4, 1);
+          ctx.beginPath();
+          ctx.arc(rad, 0, uk, 0, TAU);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+      } else if (bentuk === 'segitiga') {
+        const uk = rentang(R, 15, rMax * 0.18);
+        for (let s = 0; s < simetri; s++) {
+          ctx.save();
+          ctx.rotate((s * TAU) / simetri + a);
+          ctx.fillStyle = warna;
+          ctx.globalAlpha = rentang(R, 0.4, 1);
+          ctx.beginPath();
+          ctx.moveTo(rad, -uk);
+          ctx.lineTo(rad + uk, uk);
+          ctx.lineTo(rad - uk, uk);
+          ctx.closePath();
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+      } else {
+        const panj = rentang(R, 30, rMax * 0.4);
+        const tebal = rentang(R, 2, 12);
+        for (let s = 0; s < simetri; s++) {
+          ctx.save();
+          ctx.rotate((s * TAU) / simetri + a);
+          ctx.strokeStyle = warna;
+          ctx.globalAlpha = rentang(R, 0.4, 1);
+          ctx.lineWidth = tebal;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(rad - panj, 0);
+          ctx.lineTo(rad + panj, 0);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+      }
+    }
+  }
+
+  if (latarPola) {
+    const langkah = rint(R, 6, 16);
+    for (let s = 0; s < simetri; s++) {
+      const a = (s * TAU) / simetri;
+      ctx.strokeStyle = pilih(R, palet.warna);
+      ctx.globalAlpha = 0.2;
+      ctx.lineWidth = rentang(R, 2, 8);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * rMax, Math.sin(a) * rMax);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    for (let c = 1; c <= langkah; c++) {
+      ctx.beginPath();
+      ctx.arc(0, 0, rMax * c / langkah, 0, TAU);
+      ctx.strokeStyle = pilih(R, palet.warna);
+      ctx.globalAlpha = 0.12;
+      ctx.lineWidth = rentang(R, 1, 6);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  ctx.restore();
+
+  info.textContent = `Seed ${seedInt} · ${palet.nama}, simetri-${simetri}, ${jmlLapis} lapis — file: kaleidoscope-${seedInt}-<timestamp>.jpg`;
+}
+
+function setJfifDensity(bytes, dpi) {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new Error('bukan JPEG');
+  let i = 2;
+  while (i + 3 < bytes.length && bytes[i] === 0xff) {
+    const marker = bytes[i + 1];
+    if (marker === 0xe0) {
+      const out = bytes.slice();
+      out[i + 11] = 1;
+      out[i + 12] = (dpi >> 8) & 0xff;
+      out[i + 13] = dpi & 0xff;
+      out[i + 14] = (dpi >> 8) & 0xff;
+      out[i + 15] = dpi & 0xff;
+      return out;
+    }
+    if (marker === 0xda) break;
+    i += 2 + ((bytes[i + 2] << 8) | bytes[i + 3]);
+  }
+  const app0 = Uint8Array.of(
+    0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00,
+    0x01, 0x02, 0x01,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    0x00, 0x00
+  );
+  const out = new Uint8Array(app0.length + bytes.length - 2);
+  out.set(bytes.subarray(0, 2), 0);
+  out.set(app0, 2);
+  out.set(bytes.subarray(2), 2 + app0.length);
+  return out;
+}
+
+let dirHandle = null;
+
+async function simpanJpg() {
+  const nama = `kaleidoscope-${seed}-${Date.now()}.jpg`;
+  const blob = await new Promise(r => kanvas.toBlob(r, 'image/jpeg', 0.92));
+  const data = setJfifDensity(new Uint8Array(await blob.arrayBuffer()), DPI);
+  const jpg = new Blob([data], { type: 'image/jpeg' });
+
+  if (window.showDirectoryPicker) {
+    if (!dirHandle) dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const fh = await dirHandle.getFileHandle(nama, { create: true });
+    const w = await fh.createWritable();
+    await w.write(jpg);
+    await w.close();
+    info.textContent += ` · tersimpan: ${nama}`;
+  } else {
+    const url = URL.createObjectURL(jpg);
+    const a = document.createElement('a');
+    a.href = url; a.download = nama; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    info.textContent += ` · terunduh: ${nama} (pindahkan ke hasil/)`;
+  }
+}
+
+const kanvas = document.getElementById('kanvas');
+const info = document.getElementById('info');
+const inputSeed = document.getElementById('inputSeed');
+let seed = 0;
+
+document.getElementById('btnBaru').onclick = () => {
+  seed = (Math.random() * 2 ** 31) | 0;
+  inputSeed.value = seed;
+  render(seed);
+};
+document.getElementById('btnTerapkan').onclick = () => {
+  const v = parseInt(inputSeed.value, 10);
+  if (Number.isFinite(v)) { seed = v | 0; render(seed); }
+};
+document.getElementById('btnSimpan').onclick = simpanJpg;
+
+seed = (Math.random() * 2 ** 31) | 0;
+inputSeed.value = seed;
+render(seed);
+</script>
+</body>
+</html>
