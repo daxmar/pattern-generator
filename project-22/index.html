@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 22 — Generator Pola Woven Lattice</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #14161a; color: #eee; margin: 0; padding: 16px; text-align: center; }
+  h1 { font-size: 1.2rem; margin: 8px 0 16px; font-weight: 600; }
+  menu { margin: 0 0 12px; padding: 0; }
+  button, input { font-size: 1rem; padding: 8px 14px; border-radius: 6px; border: 1px solid #444; background: #23262c; color: #eee; cursor: pointer; }
+  button:hover { background: #33373f; }
+  input { width: 11ch; cursor: text; }
+  #info { font-size: .85rem; color: #9aa3ad; margin: 0 0 12px; }
+  canvas { width: min(92vmin, 860px); height: auto; display: block; margin: 0 auto 16px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Project 22 — Generator Pola Woven Lattice</h1>
+<menu>
+  <button id="btnBaru">Generate Pola</button>
+  <input id="inputSeed" type="number" placeholder="seed">
+  <button id="btnTerapkan">Terapkan Seed</button>
+  <button id="btnSimpan">Simpan JPG</button>
+</menu>
+<p id="info"></p>
+<canvas id="kanvas" width="4000" height="4000"></canvas>
+
+<script>
+const S = 4000;
+const DPI = 300;
+const TAU = Math.PI * 2;
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rentang = (R, min, max) => min + R() * (max - min);
+const rint = (R, min, max) => Math.floor(rentang(R, min, max + 1));
+const pilih = (R, arr) => arr[Math.floor(R() * arr.length)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+const PALET = [
+  { nama: 'senja',  latar: '#1a0f2e', warna: ['#ff6b6b','#ffa502','#ffd166','#ef476f','#f78c6b','#c084fc','#ff9f43'] },
+  { nama: 'angin',  latar: '#0c1f33', warna: ['#38bdf8','#22d3ee','#67e8f9','#7dd3fc','#0ea5e9','#0284c7','#a5f3fc'] },
+  { nama: 'hijau',  latar: '#0a1a0e', warna: ['#2ecc71','#27ae60','#1abc9c','#16a085','#3cb371','#00b894','#55efc4'] },
+  { nama: 'hangat', latar: '#1a0d05', warna: ['#ffb347','#ff7b54','#ffd166','#e07a3f','#ff8c42','#d2691e','#f4a261'] },
+  { nama: 'modern', latar: '#101216', warna: ['#ffd166','#ef476f','#06d6a0','#118ab2','#f78c6b','#c084fc','#00ffcc'] },
+];
+
+function render(seedInt) {
+  const R = mulberry32(seedInt);
+  const palet = pilih(R, PALET);
+  const bentuk = pilih(R, ['anyam', 'outline', 'gradien']);
+  const ukuran = rentang(R, 180, 360);
+  const jalur = Math.max(ukuran * 0.16, 12);
+
+  const ctx = kanvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = palet.latar;
+  ctx.fillRect(0, 0, S, S);
+
+  const cell = 2 * ukuran;
+  const margin = ukuran;
+  const cols = Math.ceil((S + margin * 2) / cell) + 1;
+  const rows = Math.ceil((S + margin * 2) / cell) + 1;
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const ox = col * cell - margin;
+      const oy = row * cell - margin;
+      const wa = pilih(R, palet.warna);
+      const wb = pilih(R, palet.warna);
+
+      ctx.save();
+      if (bentuk === 'outline') {
+        ctx.strokeStyle = wa;
+        ctx.lineWidth = Math.max(jalur * 0.4, 5);
+        ctx.strokeRect(ox, oy, cell, cell);
+        ctx.beginPath();
+        ctx.rect(ox + ukuran / 2, oy, jalur, cell);
+        ctx.rect(ox, oy + ukuran / 2, cell, jalur);
+        ctx.strokeStyle = wb;
+        ctx.lineWidth = jalur * 0.8;
+        ctx.stroke();
+      } else if (bentuk === 'gradien') {
+        const g = ctx.createLinearGradient(ox, oy, ox + cell, oy + cell);
+        g.addColorStop(0, wa);
+        g.addColorStop(1, wb);
+        ctx.fillStyle = g;
+        ctx.fillRect(ox, oy, cell, cell);
+        ctx.fillStyle = palet.latar;
+        ctx.fillRect(ox + ukuran / 2 * 0.7, oy + ukuran / 2 * 0.7, ukuran, ukuran);
+      } else {
+        ctx.fillStyle = wa;
+        ctx.fillRect(ox, oy, cell, jalur);
+        ctx.fillRect(ox, oy, jalur, cell);
+        ctx.fillStyle = wb;
+        ctx.fillRect(ox + ukuran / 2, oy + ukuran / 2, cell, jalur);
+        ctx.fillRect(ox + ukuran / 2, oy + ukuran / 2, jalur, cell);
+      }
+      ctx.restore();
+    }
+  }
+
+  const labelBentuk = { anyam: 'anyam', outline: 'outline', gradien: 'gradien' };
+  info.textContent = `Seed ${seedInt} · ${palet.nama}, ${labelBentuk[bentuk]}, sel ${Math.round(ukuran)}px — file: lattice-${seedInt}-<timestamp>.jpg`;
+}
+
+function setJfifDensity(bytes, dpi) {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new Error('bukan JPEG');
+  let i = 2;
+  while (i + 3 < bytes.length && bytes[i] === 0xff) {
+    const marker = bytes[i + 1];
+    if (marker === 0xe0) {
+      const out = bytes.slice();
+      out[i + 11] = 1;
+      out[i + 12] = (dpi >> 8) & 0xff;
+      out[i + 13] = dpi & 0xff;
+      out[i + 14] = (dpi >> 8) & 0xff;
+      out[i + 15] = dpi & 0xff;
+      return out;
+    }
+    if (marker === 0xda) break;
+    i += 2 + ((bytes[i + 2] << 8) | bytes[i + 3]);
+  }
+  const app0 = Uint8Array.of(
+    0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00,
+    0x01, 0x02, 0x01,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    0x00, 0x00
+  );
+  const out = new Uint8Array(app0.length + bytes.length - 2);
+  out.set(bytes.subarray(0, 2), 0);
+  out.set(app0, 2);
+  out.set(bytes.subarray(2), 2 + app0.length);
+  return out;
+}
+
+let dirHandle = null;
+
+async function simpanJpg() {
+  const nama = `lattice-${seed}-${Date.now()}.jpg`;
+  const blob = await new Promise(r => kanvas.toBlob(r, 'image/jpeg', 0.92));
+  const data = setJfifDensity(new Uint8Array(await blob.arrayBuffer()), DPI);
+  const jpg = new Blob([data], { type: 'image/jpeg' });
+
+  if (window.showDirectoryPicker) {
+    if (!dirHandle) dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const fh = await dirHandle.getFileHandle(nama, { create: true });
+    const w = await fh.createWritable();
+    await w.write(jpg);
+    await w.close();
+    info.textContent += ` · tersimpan: ${nama}`;
+  } else {
+    const url = URL.createObjectURL(jpg);
+    const a = document.createElement('a');
+    a.href = url; a.download = nama; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    info.textContent += ` · terunduh: ${nama} (pindahkan ke hasil/)`;
+  }
+}
+
+const kanvas = document.getElementById('kanvas');
+const info = document.getElementById('info');
+const inputSeed = document.getElementById('inputSeed');
+let seed = 0;
+
+document.getElementById('btnBaru').onclick = () => {
+  seed = (Math.random() * 2 ** 31) | 0;
+  inputSeed.value = seed;
+  render(seed);
+};
+document.getElementById('btnTerapkan').onclick = () => {
+  const v = parseInt(inputSeed.value, 10);
+  if (Number.isFinite(v)) { seed = v | 0; render(seed); }
+};
+document.getElementById('btnSimpan').onclick = simpanJpg;
+
+seed = (Math.random() * 2 ** 31) | 0;
+inputSeed.value = seed;
+render(seed);
+</script>
+</body>
+</html>

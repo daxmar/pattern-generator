@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 20 — Generator Pola Mosaic Tessellation</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #14161a; color: #eee; margin: 0; padding: 16px; text-align: center; }
+  h1 { font-size: 1.2rem; margin: 8px 0 16px; font-weight: 600; }
+  menu { margin: 0 0 12px; padding: 0; }
+  button, input { font-size: 1rem; padding: 8px 14px; border-radius: 6px; border: 1px solid #444; background: #23262c; color: #eee; cursor: pointer; }
+  button:hover { background: #33373f; }
+  input { width: 11ch; cursor: text; }
+  #info { font-size: .85rem; color: #9aa3ad; margin: 0 0 12px; }
+  canvas { width: min(92vmin, 860px); height: auto; display: block; margin: 0 auto 16px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Project 20 — Generator Pola Mosaic Tessellation</h1>
+<menu>
+  <button id="btnBaru">Generate Pola</button>
+  <input id="inputSeed" type="number" placeholder="seed">
+  <button id="btnTerapkan">Terapkan Seed</button>
+  <button id="btnSimpan">Simpan JPG</button>
+</menu>
+<p id="info"></p>
+<canvas id="kanvas" width="4000" height="4000"></canvas>
+
+<script>
+const S = 4000;
+const DPI = 300;
+const TAU = Math.PI * 2;
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rentang = (R, min, max) => min + R() * (max - min);
+const rint = (R, min, max) => Math.floor(rentang(R, min, max + 1));
+const pilih = (R, arr) => arr[Math.floor(R() * arr.length)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+const PALET = [
+  { nama: 'terracotta', latar: '#1e1410', warna: ['#c0713a','#d4956b','#a0522d','#cd853f','#e8a87c','#8b5e3c','#f0c8a0'] },
+  { nama: 'azure',      latar: '#0c1a2a', warna: ['#1e90ff','#4fa3f7','#87ceeb','#5b9bd5','#2c73d2','#6cb4ee','#3a86c8'] },
+  { nama: 'jade',       latar: '#0c1a14', warna: ['#2ecc71','#55efc4','#00b894','#1abc9c','#3cb371','#48c9b0','#27ae60'] },
+  { nama: 'amethyst',   latar: '#1a0e24', warna: ['#9b59b6','#8e44ad','#a569bd','#bb8fce','#7d3c98','#c39bd3','#6c3483'] },
+  { nama: 'slate',      latar: '#151520', warna: ['#636e72','#b2bec3','#2d3436','#95a5a6','#7f8c8d','#dfe6e9','#2c3e50'] },
+];
+
+function drawHex(ctx, cx, cy, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = TAU / 6 * i - Math.PI / 6;
+    const px = cx + r * Math.cos(a);
+    const py = cy + r * Math.sin(a);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+function render(seedInt) {
+  const R = mulberry32(seedInt);
+  const palet = pilih(R, PALET);
+  const mode = pilih(R, ['hex', 'square', 'mixed']);
+  const nat = rentang(R, 6, 14);
+
+  const ctx = kanvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = palet.latar;
+  ctx.fillRect(0, 0, S, S);
+
+  if (mode === 'hex') {
+    const ukuran = rentang(R, 100, 220);
+    const hr = ukuran * 0.5;
+    const stepX = hr * Math.sqrt(3);
+    const stepY = hr * 1.5;
+    const margin = ukuran;
+    const cols = Math.ceil((S + margin * 2) / stepX) + 2;
+    const rows = Math.ceil((S + margin * 2) / stepY) + 2;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const cx = col * stepX - margin + (row % 2 ? stepX / 2 : 0);
+        const cy = row * stepY - margin;
+        const wi = pilih(R, palet.warna);
+        drawHex(ctx, cx, cy, hr - nat * 0.5);
+        const isi = pilih(R, ['solid', 'outline']);
+        if (isi === 'solid') {
+          ctx.fillStyle = wi;
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = wi;
+          ctx.lineWidth = rentang(R, 4, 10);
+          ctx.stroke();
+        }
+      }
+    }
+  } else if (mode === 'square') {
+    const ukuran = rentang(R, 120, 280);
+    const step = ukuran;
+    const margin = ukuran;
+    const cols = Math.ceil((S + margin * 2) / step) + 2;
+    const rows = Math.ceil((S + margin * 2) / step) + 2;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = col * step - margin;
+        const y = row * step - margin;
+        const wi = pilih(R, palet.warna);
+        const gap = nat;
+        ctx.fillStyle = palet.latar;
+        ctx.fillRect(x, y, ukuran, ukuran);
+        const isi = pilih(R, ['solid', 'outline', 'titik']);
+        if (isi === 'solid') {
+          ctx.fillStyle = wi;
+          ctx.fillRect(x + gap, y + gap, ukuran - gap * 2, ukuran - gap * 2);
+        } else if (isi === 'outline') {
+          ctx.strokeStyle = wi;
+          ctx.lineWidth = rentang(R, 4, 10);
+          ctx.strokeRect(x + gap, y + gap, ukuran - gap * 2, ukuran - gap * 2);
+        } else {
+          ctx.fillStyle = wi;
+          ctx.beginPath();
+          ctx.arc(x + ukuran / 2, y + ukuran / 2, (ukuran - gap * 2) * 0.2, 0, TAU);
+          ctx.fill();
+        }
+      }
+    }
+  } else {
+    const ukuran = rentang(R, 120, 250);
+    const step = ukuran;
+    const margin = ukuran;
+    const cols = Math.ceil((S + margin * 2) / step) + 2;
+    const rows = Math.ceil((S + margin * 2) / step) + 2;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = col * step - margin;
+        const y = row * step - margin;
+        const wi = pilih(R, palet.warna);
+        const gap = nat;
+        ctx.fillStyle = palet.latar;
+        ctx.fillRect(x, y, ukuran, ukuran);
+        const jenis = pilih(R, ['hex_kecil', 'square_solid', 'dot']);
+        if (jenis === 'hex_kecil') {
+          drawHex(ctx, x + ukuran / 2, y + ukuran / 2, (ukuran - gap * 2) * 0.45);
+          ctx.fillStyle = wi;
+          ctx.fill();
+        } else if (jenis === 'square_solid') {
+          const inner = (ukuran - gap * 2) * 0.7;
+          const off = (ukuran - inner) / 2;
+          ctx.save();
+          ctx.translate(x + ukuran / 2, y + ukuran / 2);
+          ctx.rotate(rint(R, 0, 3) * TAU / 4);
+          ctx.fillStyle = wi;
+          ctx.fillRect(-inner / 2, -inner / 2, inner, inner);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = wi;
+          ctx.beginPath();
+          ctx.arc(x + ukuran / 2, y + ukuran / 2, (ukuran - gap * 2) * 0.22, 0, TAU);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  const labelMode = { hex: 'heksagon', square: 'persegi', mixed: 'campuran' };
+  info.textContent = `Seed ${seedInt} · ${palet.nama}, ${labelMode[mode]}, nat ${Math.round(nat)}px — file: mosaic-${seedInt}-<timestamp>.jpg`;
+}
+
+function setJfifDensity(bytes, dpi) {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new Error('bukan JPEG');
+  let i = 2;
+  while (i + 3 < bytes.length && bytes[i] === 0xff) {
+    const marker = bytes[i + 1];
+    if (marker === 0xe0) {
+      const out = bytes.slice();
+      out[i + 11] = 1;
+      out[i + 12] = (dpi >> 8) & 0xff;
+      out[i + 13] = dpi & 0xff;
+      out[i + 14] = (dpi >> 8) & 0xff;
+      out[i + 15] = dpi & 0xff;
+      return out;
+    }
+    if (marker === 0xda) break;
+    i += 2 + ((bytes[i + 2] << 8) | bytes[i + 3]);
+  }
+  const app0 = Uint8Array.of(
+    0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00,
+    0x01, 0x02, 0x01,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    0x00, 0x00
+  );
+  const out = new Uint8Array(app0.length + bytes.length - 2);
+  out.set(bytes.subarray(0, 2), 0);
+  out.set(app0, 2);
+  out.set(bytes.subarray(2), 2 + app0.length);
+  return out;
+}
+
+let dirHandle = null;
+
+async function simpanJpg() {
+  const nama = `mosaic-${seed}-${Date.now()}.jpg`;
+  const blob = await new Promise(r => kanvas.toBlob(r, 'image/jpeg', 0.92));
+  const data = setJfifDensity(new Uint8Array(await blob.arrayBuffer()), DPI);
+  const jpg = new Blob([data], { type: 'image/jpeg' });
+
+  if (window.showDirectoryPicker) {
+    if (!dirHandle) dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const fh = await dirHandle.getFileHandle(nama, { create: true });
+    const w = await fh.createWritable();
+    await w.write(jpg);
+    await w.close();
+    info.textContent += ` · tersimpan: ${nama}`;
+  } else {
+    const url = URL.createObjectURL(jpg);
+    const a = document.createElement('a');
+    a.href = url; a.download = nama; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    info.textContent += ` · terunduh: ${nama} (pindahkan ke hasil/)`;
+  }
+}
+
+const kanvas = document.getElementById('kanvas');
+const info = document.getElementById('info');
+const inputSeed = document.getElementById('inputSeed');
+let seed = 0;
+
+document.getElementById('btnBaru').onclick = () => {
+  seed = (Math.random() * 2 ** 31) | 0;
+  inputSeed.value = seed;
+  render(seed);
+};
+document.getElementById('btnTerapkan').onclick = () => {
+  const v = parseInt(inputSeed.value, 10);
+  if (Number.isFinite(v)) { seed = v | 0; render(seed); }
+};
+document.getElementById('btnSimpan').onclick = simpanJpg;
+
+seed = (Math.random() * 2 ** 31) | 0;
+inputSeed.value = seed;
+render(seed);
+</script>
+</body>
+</html>

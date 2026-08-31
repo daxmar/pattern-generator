@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 26 — Generator Pola Starry Constellation</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #14161a; color: #eee; margin: 0; padding: 16px; text-align: center; }
+  h1 { font-size: 1.2rem; margin: 8px 0 16px; font-weight: 600; }
+  menu { margin: 0 0 12px; padding: 0; }
+  button, input { font-size: 1rem; padding: 8px 14px; border-radius: 6px; border: 1px solid #444; background: #23262c; color: #eee; cursor: pointer; }
+  button:hover { background: #33373f; }
+  input { width: 11ch; cursor: text; }
+  #info { font-size: .85rem; color: #9aa3ad; margin: 0 0 12px; }
+  canvas { width: min(92vmin, 860px); height: auto; display: block; margin: 0 auto 16px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Project 26 — Generator Pola Starry Constellation</h1>
+<menu>
+  <button id="btnBaru">Generate Pola</button>
+  <input id="inputSeed" type="number" placeholder="seed">
+  <button id="btnTerapkan">Terapkan Seed</button>
+  <button id="btnSimpan">Simpan JPG</button>
+</menu>
+<p id="info"></p>
+<canvas id="kanvas" width="4000" height="4000"></canvas>
+
+<script>
+const S = 4000;
+const DPI = 300;
+const TAU = Math.PI * 2;
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rentang = (R, min, max) => min + R() * (max - min);
+const rint = (R, min, max) => Math.floor(rentang(R, min, max + 1));
+const pilih = (R, arr) => arr[Math.floor(R() * arr.length)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+const PALET = [
+  { nama: 'midnight',  latar: '#060810', warna: ['#f8f8ff','#c8d8f8','#88a8e0','#6888c8','#a0b8e8','#d0e0ff','#4868a8'] },
+  { nama: 'aurora',    latar: '#060812', warna: ['#00ffcc','#00e8a0','#40c8ff','#80a0ff','#00ffc0','#60e8c0','#20b8ff'] },
+  { nama: 'ember',     latar: '#100808', warna: ['#ffd866','#ffb833','#ff9944','#ffcc66','#ff8833','#ffe088','#ff6633'] },
+  { nama: 'violet',    latar: '#0a0614', warna: ['#d8b4fe','#c084fc','#a855f7','#e879f9','#f0abfc','#b284f8','#9333ea'] },
+  { nama: 'nordic',    latar: '#0a1018', warna: ['#94d2bd','#a8dadc','#89c2d9','#7ec8e3','#61a5c2','#8ecae6','#468faf'] },
+];
+
+function drawStar4(ctx, x, y, size, color) {
+  const s = size;
+  const inner = s * 0.3;
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * TAU - Math.PI / 2;
+    const r = i % 2 === 0 ? s : inner;
+    const px = x + Math.cos(angle) * r;
+    const py = y + Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawStar5(ctx, x, y, size, color, stroke) {
+  const outer = size;
+  const inner = size * 0.4;
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const angle = (i / 10) * TAU - Math.PI / 2;
+    const r = i % 2 === 0 ? outer : inner;
+    const px = x + Math.cos(angle) * r;
+    const py = y + Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  if (stroke) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(size * 0.08, 2);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+}
+
+function drawDot(ctx, x, y, r, color) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, TAU);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawLine(ctx, x1, y1, x2, y2, color, lw) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw;
+  ctx.stroke();
+}
+
+function render(seedInt) {
+  const R = mulberry32(seedInt);
+  const palet = pilih(R, PALET);
+  const tipe = pilih(R, ['grid', 'random', 'hybrid']);
+  const variasiWarna = R() < 0.7;
+
+  const ctx = kanvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = palet.latar;
+  ctx.fillRect(0, 0, S, S);
+
+  if (tipe === 'grid') {
+    const spacing = rentang(R, 180, 420);
+    const cols = Math.ceil(S / spacing) + 1;
+    const rows = Math.ceil(S / spacing) + 1;
+    const offX = rentang(R, 0, spacing);
+    const offY = rentang(R, 0, spacing);
+    const nodeSize = spacing * rentang(R, 0.08, 0.15);
+
+    const pts = [];
+    for (let row = -1; row <= rows; row++) {
+      for (let col = -1; col <= cols; col++) {
+        const jx = col * spacing + offX + rentang(R, -spacing * 0.15, spacing * 0.15);
+        const jy = row * spacing + offY + rentang(R, -spacing * 0.15, spacing * 0.15);
+        pts.push({ x: jx, y: jy, row, col });
+      }
+    }
+
+    ctx.globalAlpha = 0.3;
+    for (const p of pts) {
+      for (const q of pts) {
+        if (p === q) continue;
+        const dx = p.x - q.x;
+        const dy = p.y - q.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < spacing * 1.1 && dist > 0) {
+          const color = pilih(R, palet.warna);
+          drawLine(ctx, p.x, p.y, q.x, q.y, color, Math.max(dist * 0.004, 1.5));
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    for (const p of pts) {
+      const color = variasiWarna ? pilih(R, palet.warna) : palet.warna[(p.row + p.col) % palet.warna.length];
+      const kind = rint(R, 0, 4);
+      if (kind === 0) drawStar4(ctx, p.x, p.y, nodeSize, color);
+      else if (kind === 1) drawStar5(ctx, p.x, p.y, nodeSize, color, false);
+      else if (kind === 2) drawStar5(ctx, p.x, p.y, nodeSize, color, true);
+      else drawDot(ctx, p.x, p.y, nodeSize * rentang(R, 0.3, 0.7), color);
+    }
+  } else if (tipe === 'random') {
+    const count = rint(R, 600, 1200);
+    const pts = [];
+    for (let i = 0; i < count; i++) {
+      const x = rentang(R, 0, S);
+      const y = rentang(R, 0, S);
+      pts.push({ x, y });
+    }
+
+    const lineThreshold = rentang(R, 180, 350);
+    ctx.globalAlpha = 0.25;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[i].x - pts[j].x;
+        const dy = pts[i].y - pts[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < lineThreshold) {
+          drawLine(ctx, pts[i].x, pts[i].y, pts[j].x, pts[j].y, pilih(R, palet.warna), Math.max(dist * 0.003, 1.2));
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    for (const p of pts) {
+      const color = pilih(R, palet.warna);
+      const sz = rentang(R, 4, 18);
+      const kind = rint(R, 0, 4);
+      if (kind === 0) drawStar4(ctx, p.x, p.y, sz, color);
+      else if (kind === 1) drawStar5(ctx, p.x, p.y, sz, color, false);
+      else if (kind === 2) drawDot(ctx, p.x, p.y, sz * 0.5, color);
+      else drawStar5(ctx, p.x, p.y, sz, color, true);
+    }
+  } else {
+    const spacing = rentang(R, 200, 380);
+    const cols = Math.ceil(S / spacing) + 1;
+    const rows = Math.ceil(S / spacing) + 1;
+    const offX = rentang(R, 0, spacing);
+    const offY = rentang(R, 0, spacing);
+    const nodeSize = spacing * rentang(R, 0.1, 0.16);
+
+    const pts = [];
+    for (let row = -1; row <= rows; row++) {
+      for (let col = -1; col <= cols; col++) {
+        const jx = col * spacing + offX + rentang(R, -spacing * 0.2, spacing * 0.2);
+        const jy = row * spacing + offY + rentang(R, -spacing * 0.2, spacing * 0.2);
+        pts.push({ x: jx, y: jy, row, col });
+      }
+    }
+
+    ctx.globalAlpha = 0.3;
+    for (const p of pts) {
+      for (const q of pts) {
+        if (p === q) continue;
+        const dx = p.x - q.x;
+        const dy = p.y - q.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < spacing * 1.2 && dist > 0) {
+          drawLine(ctx, p.x, p.y, q.x, q.y, pilih(R, palet.warna), Math.max(dist * 0.004, 1.5));
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    for (const p of pts) {
+      const color = variasiWarna ? pilih(R, palet.warna) : palet.warna[(p.row + p.col) % palet.warna.length];
+      drawDot(ctx, p.x, p.y, nodeSize * rentang(R, 0.15, 0.35), color);
+      const kind = rint(R, 0, 3);
+      if (kind === 0) drawStar4(ctx, p.x, p.y, nodeSize, color);
+      else if (kind === 1) drawStar5(ctx, p.x, p.y, nodeSize, color, false);
+      else drawStar5(ctx, p.x, p.y, nodeSize, color, true);
+    }
+  }
+
+  const labelTipe = { grid: 'grid konstelasi', random: 'bintang acak', hybrid: 'hybrid grid+dot' };
+  info.textContent = `Seed ${seedInt} · ${palet.nama}, ${labelTipe[tipe]} — file: constellation-${seedInt}-<timestamp>.jpg`;
+}
+
+function setJfifDensity(bytes, dpi) {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new Error('bukan JPEG');
+  let i = 2;
+  while (i + 3 < bytes.length && bytes[i] === 0xff) {
+    const marker = bytes[i + 1];
+    if (marker === 0xe0) {
+      const out = bytes.slice();
+      out[i + 11] = 1;
+      out[i + 12] = (dpi >> 8) & 0xff;
+      out[i + 13] = dpi & 0xff;
+      out[i + 14] = (dpi >> 8) & 0xff;
+      out[i + 15] = dpi & 0xff;
+      return out;
+    }
+    if (marker === 0xda) break;
+    i += 2 + ((bytes[i + 2] << 8) | bytes[i + 3]);
+  }
+  const app0 = Uint8Array.of(
+    0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00,
+    0x01, 0x02, 0x01,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    (dpi >> 8) & 0xff, dpi & 0xff,
+    0x00, 0x00
+  );
+  const out = new Uint8Array(app0.length + bytes.length - 2);
+  out.set(bytes.subarray(0, 2), 0);
+  out.set(app0, 2);
+  out.set(bytes.subarray(2), 2 + app0.length);
+  return out;
+}
+
+let dirHandle = null;
+
+async function simpanJpg() {
+  const nama = `constellation-${seed}-${Date.now()}.jpg`;
+  const blob = await new Promise(r => kanvas.toBlob(r, 'image/jpeg', 0.92));
+  const data = setJfifDensity(new Uint8Array(await blob.arrayBuffer()), DPI);
+  const jpg = new Blob([data], { type: 'image/jpeg' });
+
+  if (window.showDirectoryPicker) {
+    if (!dirHandle) dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const fh = await dirHandle.getFileHandle(nama, { create: true });
+    const w = await fh.createWritable();
+    await w.write(jpg);
+    await w.close();
+    info.textContent += ` · tersimpan: ${nama}`;
+  } else {
+    const url = URL.createObjectURL(jpg);
+    const a = document.createElement('a');
+    a.href = url; a.download = nama; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    info.textContent += ` · terunduh: ${nama} (pindahkan ke hasil/)`;
+  }
+}
+
+const kanvas = document.getElementById('kanvas');
+const info = document.getElementById('info');
+const inputSeed = document.getElementById('inputSeed');
+let seed = 0;
+
+document.getElementById('btnBaru').onclick = () => {
+  seed = (Math.random() * 2 ** 31) | 0;
+  inputSeed.value = seed;
+  render(seed);
+};
+document.getElementById('btnTerapkan').onclick = () => {
+  const v = parseInt(inputSeed.value, 10);
+  if (Number.isFinite(v)) { seed = v | 0; render(seed); }
+};
+document.getElementById('btnSimpan').onclick = simpanJpg;
+
+seed = (Math.random() * 2 ** 31) | 0;
+inputSeed.value = seed;
+render(seed);
+</script>
+</body>
+</html>
