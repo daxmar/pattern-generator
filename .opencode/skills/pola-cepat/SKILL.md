@@ -5,7 +5,7 @@ description: Use to speed up creating a new pattern-generator page. Provides the
 
 # Pola Cepat
 
-Skill percepat untuk membuat satu project generator pola (atau membanyakkannya 16-30 jadi cepat, seperti yang sudah dilakukan). Melengkapi `pola-baru`.
+Skill percepat untuk membuat satu project generator pola (atau membanyakkannya jadi cepat, seperti yang sudah dilakukan 16-30 lalu 31-50 lalu 51-90 dalam 4 gelombang). Melengkapi `pola-baru`.
 
 ## Template siap-copy
 File **`template.html`** di folder skill ini berisi struktur lengkap yang IDENTIK untuk semua project (hasil nyata dari project 1-30). Bagian bawah template (mulai komentar `===== BAGIAN DI BAWAH INI JANGAN DIEDIT =====`) TIDAK BOLEH diubah sama sekali.
@@ -42,8 +42,38 @@ Minta pengguna pilih pola populer yang BELUM ada di daftar ini, atau kombinasika
 | 13 | Kaleidoscope | 28 | Calla Bloom |
 | 14 | Confetti | 29 | Wave Bar |
 | 15 | Moroccan Quatrefoil | 30 | Dazzle |
+| 31 | Aztec | 46 | Dot Grid Isometric |
+| 32 | Damask | 47 | Wave Scallop |
+| 33 | Ikat | 48 | Basque Stripes |
+| 34 | Paisley | 49 | Celtic Knot |
+| 35 | Gingham | 50 | Geometric Stars |
+| 36 | Batik Parang | 51 | Barcode Stripe |
+| 37 | Tribal | 52 | Heart Grid |
+| 38 | Horizontal Stripes | 53 | Sunflower Seed |
+| 39 | Crosshatch | 54 | Herringbone |
+| 40 | Toile | 55 | Checkerboard |
+| 41 | Pixel Blocky | 56 | Vichy Tartan |
+| 42 | Trellis Gate | 57 | Quilt Patchwork |
+| 43 | Pinwheel | 58 | Yin-Yang Motif |
+| 44 | Ombre Linear | 59 | Fringe Tassel |
+| 45 | Fishtail Chevron | 60 | Falling Leaves |
+| 61 | Bubble Soap | 76 | Layered Arcs |
+| 62 | Rosette Flower | 77 | Corner Frame |
+| 63 | Feather Fan | 78 | Shattered Glass |
+| 64 | Snake Scale | 79 | Winding Path |
+| 65 | 3D Cuboid | 80 | Forest Fir |
+| 66 | Lotus Scroll | 81 | Crescent Moon |
+| 67 | Woven Basket | 82 | Peacock Eye |
+| 68 | Sector Fan | 83 | Tribal Arrow |
+| 69 | Eight-Point Star | 84 | Scattered Sparkle |
+| 70 | Rainbow Stripes | 85 | Pagoda Roof |
+| 71 | Hex Nut | 86 | Chain Link |
+| 72 | Concentric Squares | 87 | Ornamental Vine |
+| 73 | Pebble Stone | 88 | Maze Wall |
+| 74 | Four-Leaf Clover | 89 | Staircase Steps |
+| 75 | Pin Stitch | 90 | Double Border |
 
-Ide pola populer lain yang belum dipakai (bisa ditawarkan): Aztec, Damask, Ikat, Paisley, Stripe Geometri, Pixel/Blocky, Ornamen Bunga, Kotak-Kotak Gingham, Tribal, Retro 70-an Sunburst, Polar Bear/kartun, karya batik Parang/Ceplok, dll.
+Ide pola populer lain yang belum dipakai (bisa ditawarkan untuk project 91+): Damask Dye, Pinstripe Mikro, Tabby Weave, Op-Art, Batik Megamendung, Tesseract, Swirl Spiral Ganda, Wave Interlock, Barcode 2D (QR-look), Polka Dot Offset, Water Welt, Iris Round, Chinese Lattice, Pom-pom Stitch, Quatrefoild Ink, Moss/Texture Noise, Manhole Cover, Rope Twist, Tornado, Kaleido-Spiral, dll.
 
 ## Bug umum yang sering muncul (CEK SEBELUM DITERIMA)
 1. **Motif menggambar di origin (0,0) tapi tidak di-translate** → semua motif numpuk di pojok. Solusi: `ctx.save(); ctx.translate(x,y); ...gambar pakai koordinat relatif origin...; ctx.restore();`.
@@ -81,7 +111,7 @@ Urutan verifikasi cepat (loop boleh):
 3. `index.php` sudah otomatis menampilkan project baru (katalog dikelompokkan per 10).
 
 ## Membanyakkan project sekaligus
-Untuk membuat banyak project sekaligus (mis. 16-30), strategi tercepat yang terbukti:
+Untuk membuat banyak project sekaligus, strategi tercepat yang terbukti (dipakai untuk 16-90):
 - Buat dulu 1 project lengkap yang benar sebagai template nyata (mis. project-16), verifikasi penuh.
 - Delegasikan ke beberapa sub-agent paralel, SEMUA membaca template yang sama & aturan wajib (canvas 4000, DPi JFIF, tiling penuh, simpanJpg identik). Beri tiap sub-agent 2 project agar fokus.
 - Setelah sub-agent selesai, jangan percaya mentah: verifikasi SEMUA lagi dengan loop node --check + smoke test render. (Pernah terjadi sub-agent mengaku selesai tapi file tidak dibuat / aid returns empty.)
