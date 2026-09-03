@@ -72,8 +72,28 @@ Minta pengguna pilih pola populer yang BELUM ada di daftar ini, atau kombinasika
 | 73 | Pebble Stone | 88 | Maze Wall |
 | 74 | Four-Leaf Clover | 89 | Staircase Steps |
 | 75 | Pin Stitch | 90 | Double Border |
+| 91 | Pinstripe Mikro | 106 | Manhole Cover |
+| 92 | Damask Dye | 107 | Rope Twist |
+| 93 | Tabby Weave | 108 | Tornado |
+| 94 | Op-Art | 109 | Kaleido-Spiral |
+| 95 | Batik Megamendung | 110 | Feather Medallion |
+| 96 | Tesseract | 111 | Tea Leaves |
+| 97 | Swirl Spiral Ganda | 112 | Bamboo Stalks |
+| 98 | Wave Interlock | 113 | Rice Paddy |
+| 99 | QR Barcode | 114 | Temple Bell |
+| 100 | Polka Offset | 115 | Ogee Arch |
+| 101 | Water Welt | 116 | Roman Mosaic |
+| 102 | Iris Round | 117 | Greek Key |
+| 103 | Chinese Lattice | 118 | Sand Dune |
+| 104 | Pom-pom Stitch | 119 | Concentric Triangles |
+| 105 | Moss Texture | 120 | Ripple Rings |
+| 121 | Coral Branch | 126 | Pentagon |
+| 122 | Jellyfish | 127 | Spine Vertebra |
+| 123 | Pearl Necklace | 128 | Picket Fence |
+| 124 | Tumbling Blocks | 129 | Parchment Border |
+| 125 | Star of David | 130 | Compass Rose |
 
-Ide pola populer lain yang belum dipakai (bisa ditawarkan untuk project 91+): Damask Dye, Pinstripe Mikro, Tabby Weave, Op-Art, Batik Megamendung, Tesseract, Swirl Spiral Ganda, Wave Interlock, Barcode 2D (QR-look), Polka Dot Offset, Water Welt, Iris Round, Chinese Lattice, Pom-pom Stitch, Quatrefoild Ink, Moss/Texture Noise, Manhole Cover, Rope Twist, Tornado, Kaleido-Spiral, dll.
+Ide pola populer lain yang belum dipakai (bisa ditawarkan untuk project 131+): Honeycomb Dye, Feather Star, Karana Petal, Swirl Triad, Abstract Noise, Dual Palmette, Ikat Zigzag, Millefiore, Arabic Scroll, Wave Chevron, Zigzag Dot, Aurora Gradient, Sun Mask, Flower Cross, Gyroscope Ring, Chevron Quilt, Lattice Star, Polka Chain, Corner Vine, Panel Mosaic, dll.
 
 ## Bug umum yang sering muncul (CEK SEBELUM DITERIMA)
 1. **Motif menggambar di origin (0,0) tapi tidak di-translate** → semua motif numpuk di pojok. Solusi: `ctx.save(); ctx.translate(x,y); ...gambar pakai koordinat relatif origin...; ctx.restore();`.
